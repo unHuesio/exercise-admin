@@ -54,13 +54,13 @@ onMounted(async () => {
 <template>
   <UContainer>
     <UPageHeader
-      title="Register"
-      description="Create your account with Google."
+      title="Sign up with Google"
+      description="Use your Google account to register and receive an app JWT."
     />
     <UPageSection>
       <div class="max-w-md mx-auto space-y-4">
         <p class="text-sm text-muted">
-          Register by sharing your Google ID token with the backend.
+          This app uses Google Sign-In only. No email/password registration form is used here.
         </p>
         <div
           ref="googleButton"
