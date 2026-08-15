@@ -1,60 +1,92 @@
 <script setup lang="ts">
-import * as v from 'valibot'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import { useGoogleIdToken } from '~/composables/useGoogleIdToken'
 
-const schema = v.pipe(
-  v.object({
-    email: v.pipe(v.string(), v.email('Invalid email')),
-    password: v.pipe(v.string(), v.minLength(8, 'Must be at least 8 characters')),
-  })
-)
+const googleButton = ref<HTMLElement | null>(null)
+const errorMessage = ref('')
+const successMessage = ref('')
+const isLoading = ref(false)
 
-type Schema = v.InferOutput<typeof schema>
+type ApiError = {
+  data?: {
+    error?: string
+    message?: string
+  }
+  message?: string
+}
 
-const state = reactive({
-  email: '',
-  password: '',
-})
+const { renderGoogleButton } = useGoogleIdToken()
 
-const handleSubmit = async (event: FormSubmitEvent<Schema>) => {
-  event.preventDefault()
-  const result = v.safeParse(schema, state)
-  if (result.success) {
-    // Here you would typically send the data to your backend API
-    try {
-        const response = await useApiFetch('/register', {
-            method: 'POST',
-            body: result.output,
-        })
-        console.log('Registration successful')
-        // redirect to login page
-        navigateTo('/login')
-    } catch (error: any) {
-        const message = error?.data?.error || error?.data?.message || error.message || 'Registration failed'
-        console.error('Registration failed:', message)
-    }
-    } else {
-    console.error('Validation errors:', result.issues)
-    // You can also display these errors to the user
+const handleGoogleRegister = async (idToken: string) => {
+  if (isLoading.value) return
+
+  isLoading.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    const response = await useApiFetch<{ message?: string }>('/register', {
+      method: 'POST',
+      body: { id_token: idToken }
+    })
+
+    successMessage.value = response?.message || 'Google user registered successfully'
+    navigateTo('/login')
+  } catch (error: unknown) {
+    const apiError = error as ApiError
+    errorMessage.value = apiError.data?.error || apiError.data?.message || apiError.message || 'Registration failed'
+  } finally {
+    isLoading.value = false
   }
 }
+
+onMounted(async () => {
+  if (!googleButton.value) return
+
+  try {
+    await renderGoogleButton(googleButton.value, handleGoogleRegister, 'signup_with')
+  } catch (error: unknown) {
+    const apiError = error as ApiError
+    errorMessage.value = apiError.message || 'Failed to load Google sign-up'
+  }
+})
 </script>
+
 <template>
-    <UContainer>
-        <UPageHeader
-        title="Register"
-        description="Create your account to get started with our awesome app."
-      />
-        <UPageSection>
-            <UForm class="max-w-md mx-auto space-y-6" :schema="schema" :state="state" @submit="handleSubmit">
-                <UFormField label="Email" name="email">
-                    <UInput v-model="state.email" type="email" placeholder="Enter your email" />
-                </UFormField>
-                <UFormField label="Password" name="password">
-                    <UInput v-model="state.password" type="password" placeholder="Enter your password" />
-                </UFormField>
-                <UButton type="submit" color="primary" class="w-full">Register</UButton>
-            </UForm>
-        </UPageSection>
-    </UContainer>
+  <UContainer>
+    <UPageHeader
+      title="Register"
+      description="Create your account with Google."
+    />
+    <UPageSection>
+      <div class="max-w-md mx-auto space-y-4">
+        <p class="text-sm text-muted">
+          Register by sharing your Google ID token with the backend.
+        </p>
+        <div
+          ref="googleButton"
+          class="flex justify-center"
+        />
+        <UAlert
+          v-if="errorMessage"
+          color="error"
+          variant="soft"
+          title="Registration failed"
+          :description="errorMessage"
+        />
+        <UAlert
+          v-if="successMessage"
+          color="success"
+          variant="soft"
+          title="Registered"
+          :description="successMessage"
+        />
+        <p
+          v-if="isLoading"
+          class="text-center text-sm text-muted"
+        >
+          Creating your account...
+        </p>
+      </div>
+    </UPageSection>
+  </UContainer>
 </template>

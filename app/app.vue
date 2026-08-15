@@ -1,10 +1,9 @@
 <script setup>
-import { useAuthStore } from "~/stores/auth";
-import auth from "./middleware/auth";
+import { useAuthStore } from '~/stores/auth'
+
 const route = useRoute()
 
-const authStore = useAuthStore();
-
+const authStore = useAuthStore()
 
 function logout() {
   authStore.logout()
@@ -48,11 +47,6 @@ const items = computed(() => {
   if (authStore.isAdmin) {
     baseItems.push(
       {
-        label: 'API Keys',
-        to: '/apiKeys',
-        active: route.path.startsWith('/apiKeys')
-      },
-      {
         label: 'Permissions',
         to: '/permissions',
         active: route.path.startsWith('/permissions')
@@ -66,7 +60,6 @@ const items = computed(() => {
   }
   return baseItems
 })
-
 </script>
 
 <template>
@@ -87,24 +80,30 @@ const items = computed(() => {
           aria-label="Register a new account"
           color="neutral"
           variant="ghost"
-        >Register</UButton>
+        >
+          Register
+        </UButton>
 
-      <UButton
-        v-if="!authStore.isLoggedIn"
-        to="/login"
-        icon="i-lucide-monitor"
-        aria-label="Log in to dashboard"
-        color="neutral"
-        variant="ghost"
-      >Login</UButton>
-      <UButton
-        v-else
-        @click="logout"
-        icon="i-lucide-log-out"
-        aria-label="Log out"
-        color="neutral"
-        variant="ghost"
-      >Logout</UButton>
+        <UButton
+          v-if="!authStore.isLoggedIn"
+          to="/login"
+          icon="i-lucide-monitor"
+          aria-label="Log in to dashboard"
+          color="neutral"
+          variant="ghost"
+        >
+          Login
+        </UButton>
+        <UButton
+          v-else
+          icon="i-lucide-log-out"
+          aria-label="Log out"
+          color="neutral"
+          variant="ghost"
+          @click="logout"
+        >
+          Logout
+        </UButton>
       </template>
     </UHeader>
 

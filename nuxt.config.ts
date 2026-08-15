@@ -1,18 +1,18 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  runtimeConfig: {
-    public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || '',
-      apiKey: process.env.NUXT_PUBLIC_API_KEY || '',
-    }
-  },
   modules: ['@nuxt/eslint', '@nuxt/ui', '@pinia/nuxt'],
-
   devtools: {
     enabled: true
   },
 
   css: ['~/assets/css/main.css'],
+
+  runtimeConfig: {
+    public: {
+      apiBaseUrl: import.meta.env.NUXT_PUBLIC_API_BASE_URL || '',
+      googleClientId: import.meta.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+    }
+  },
 
   routeRules: {
     '/': { prerender: true }

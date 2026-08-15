@@ -1,66 +1,90 @@
 <script setup lang="ts">
-import * as v from 'valibot'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import { useAuthStore } from '~/stores/auth'
-import auth from '~/middleware/auth';
+import { useGoogleIdToken } from '~/composables/useGoogleIdToken'
 
-const authStore = useAuthStore();
+const authStore = useAuthStore()
+const googleButton = ref<HTMLElement | null>(null)
+const errorMessage = ref('')
+const isLoading = ref(false)
 
-const schema = v.pipe(
-  v.object({
-    email: v.pipe(v.string(), v.email('Invalid email')),
-    password: v.pipe(v.string(), v.minLength(8, 'Must be at least 8 characters')),
-  })
-)
+type ApiError = {
+  data?: {
+    error?: string
+    message?: string
+  }
+  message?: string
+}
 
-type Schema = v.InferOutput<typeof schema>
+const { renderGoogleButton } = useGoogleIdToken()
 
-const state = reactive({
-  email: '',
-  password: '',
-})
+const handleGoogleLogin = async (idToken: string) => {
+  if (isLoading.value) return
 
-const handleSubmit = async (event: FormSubmitEvent<Schema>) => {
-  event.preventDefault()
-  const result = v.safeParse(schema, state)
-  if (result.success) {
-    // Here you would typically send the data to your backend API
-    try {
-        const response = await useApiFetch<{ token: string }>('/login', {
-            method: 'POST',
-            body: result.output,
-        })
-        console.log('Login successful')
-        sessionStorage.setItem('authToken', response?.token || '')
-        authStore.initialize()
-        // redirect to home page or dashboard
-        navigateTo('/')
-    } catch (error: any) {
-        const message = error?.data?.error || error?.data?.message || error.message || 'Login failed'
-        console.error('Login failed:', message)
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await useApiFetch<{ token: string }>('/login', {
+      method: 'POST',
+      body: { id_token: idToken }
+    })
+
+    if (!response?.token) {
+      throw new Error('Login succeeded but token was not returned')
     }
-    } else {
-    console.error('Validation errors:', result.issues)
-    // You can also display these errors to the user
+
+    sessionStorage.setItem('authToken', response.token)
+    authStore.initialize()
+    navigateTo('/')
+  } catch (error: unknown) {
+    const apiError = error as ApiError
+    errorMessage.value = apiError.data?.error || apiError.data?.message || apiError.message || 'Login failed'
+  } finally {
+    isLoading.value = false
   }
 }
+
+onMounted(async () => {
+  if (!googleButton.value) return
+
+  try {
+    await renderGoogleButton(googleButton.value, handleGoogleLogin, 'signin_with')
+  } catch (error: unknown) {
+    const apiError = error as ApiError
+    errorMessage.value = apiError.message || 'Failed to load Google sign-in'
+  }
+})
 </script>
+
 <template>
-    <UContainer>
-        <UPageHeader
-        title="Login"
-        description="Log in to your account to get started with our awesome app."
-      />
-        <UPageSection>
-            <UForm class="max-w-md mx-auto space-y-6" :schema="schema" :state="state" @submit="handleSubmit">
-                <UFormField label="Email" name="email">
-                    <UInput v-model="state.email" type="email" placeholder="Enter your email" />
-                </UFormField>
-                <UFormField label="Password" name="password">
-                    <UInput v-model="state.password" type="password" placeholder="Enter your password" />
-                </UFormField>
-                <UButton type="submit" color="primary" class="w-full">Login</UButton>
-            </UForm>
-        </UPageSection>
-    </UContainer>
+  <UContainer>
+    <UPageHeader
+      title="Login"
+      description="Sign in with Google to continue."
+    />
+    <UPageSection>
+      <div class="max-w-md mx-auto space-y-4">
+        <p class="text-sm text-muted">
+          Use your Google account. We exchange your Google ID token for an app JWT.
+        </p>
+        <div
+          ref="googleButton"
+          class="flex justify-center"
+        />
+        <UAlert
+          v-if="errorMessage"
+          color="error"
+          variant="soft"
+          title="Login failed"
+          :description="errorMessage"
+        />
+        <p
+          v-if="isLoading"
+          class="text-center text-sm text-muted"
+        >
+          Signing you in...
+        </p>
+      </div>
+    </UPageSection>
+  </UContainer>
 </template>

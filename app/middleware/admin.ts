@@ -1,10 +1,11 @@
-import { useAuthStore } from "~/stores/auth";
+import { useAuthStore } from '~/stores/auth'
 
+export default defineNuxtRouteMiddleware(() => {
+  const authStore = useAuthStore()
+  authStore.initialize()
 
-export default defineNuxtRouteMiddleware((to, from) => {
-    const authStore = useAuthStore();
-    if (!authStore.isAdmin) {
-            console.warn('No admin role found - redirecting to login')
-            return navigateTo('/login')
-    }
+  if (!authStore.isAdmin) {
+    console.warn('No admin role found - redirecting to login')
+    return navigateTo('/login')
+  }
 })
