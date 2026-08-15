@@ -5,6 +5,10 @@ const route = useRoute()
 
 const authStore = useAuthStore()
 
+onMounted(() => {
+  void authStore.initialize()
+})
+
 function logout() {
   authStore.logout()
   navigateTo('/login')

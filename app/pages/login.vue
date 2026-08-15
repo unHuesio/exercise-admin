@@ -34,7 +34,7 @@ const handleGoogleLogin = async (idToken: string) => {
     }
 
     sessionStorage.setItem('authToken', response.token)
-    authStore.initialize()
+    await authStore.initialize()
     navigateTo('/')
   } catch (error: unknown) {
     const apiError = error as ApiError
