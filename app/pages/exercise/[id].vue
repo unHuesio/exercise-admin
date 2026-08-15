@@ -49,9 +49,7 @@ const loadExercise = async () => {
   const id = useRoute().params.id
 
   try {
-    const response = await useApiFetch(`/exercises/${id}`, {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch(`/exercises/${id}`)
 
     exercise.value = response as Exercise
 

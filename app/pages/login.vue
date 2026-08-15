@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { useGoogleIdToken } from '~/composables/useGoogleIdToken'
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 const authStore = useAuthStore()
 const googleButton = ref<HTMLElement | null>(null)
@@ -33,6 +34,7 @@ const handleGoogleLogin = async (idToken: string) => {
       throw new Error('Login succeeded but token was not returned')
     }
 
+    clearCachedApiFetch()
     sessionStorage.setItem('authToken', response.token)
     await authStore.initialize()
     navigateTo('/')

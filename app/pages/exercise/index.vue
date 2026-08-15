@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+import { useCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 definePageMeta({
   middleware: 'auth'
@@ -28,9 +29,7 @@ type ApiError = {
 
 onMounted(async () => {
   try {
-    const response = await useApiFetch('/exercises', {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch('/exercises')
     console.log('Exercises fetched successfully:', response)
     exercises.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {

@@ -24,9 +24,7 @@ onMounted(async () => {
   const id = useRoute().params.id
 
   try {
-    const response = await useApiFetch(`/permissions/role/${id}`, {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch(`/permissions/role/${id}`)
 
     permissions.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
@@ -47,9 +45,7 @@ const handleDelete = async (permission: Permission) => {
       }
     })
 
-    const response = await useApiFetch('/permissions', {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch('/permissions', { forceRefresh: true })
 
     permissions.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {

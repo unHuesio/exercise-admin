@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 type DecodedToken = {
   roles?: string[]
@@ -110,6 +111,7 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('authToken')
+        clearCachedApiFetch()
         this.isLoggedIn = false
         this.isAdmin = false
         this.lastToken = null

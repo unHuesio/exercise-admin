@@ -1,3 +1,5 @@
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
+
 export function useApiFetch<T = unknown>(path: string, options?: { method?: string, body?: BodyInit | Record<string, unknown> | null, headers?: Record<string, string> }) {
   const config = useRuntimeConfig()
   const url = `${config.public.apiBaseUrl}${path}`
@@ -20,6 +22,7 @@ export function useApiFetch<T = unknown>(path: string, options?: { method?: stri
       ) {
         console.warn('Unauthorized access - redirecting to login')
         if (typeof window !== 'undefined') sessionStorage.removeItem('authToken')
+        clearCachedApiFetch()
         navigateTo('/login')
       }
     } })

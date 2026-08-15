@@ -22,15 +22,17 @@ type ApiError = {
 
 const groupRoles = ref<GroupRole[]>([])
 
-const loadGroupRoles = async () => {
+const loadGroupRoles = async (force = false) => {
   try {
-    const response = await useApiFetch('/permissions/groups', {
-      method: 'GET'
+    const response = await useCachedApiFetch('/permissions/groups', {
+      forceRefresh: force
     })
 
-    groupRoles.value = Object.entries(response as RoleEmails).flatMap(([role, users]) =>
+    const nextGroupRoles = Object.entries(response as RoleEmails).flatMap(([role, users]) =>
       users.map(user => ({ role, user }))
     )
+
+    groupRoles.value = nextGroupRoles
   } catch (error: unknown) {
     const apiError = error as ApiError
     const message = apiError.data?.error || apiError.data?.message || apiError.message || 'Failed to fetch permissions groups'
@@ -51,6 +53,10 @@ const goToCreateGroup = () => {
 }
 
 const goToGroups = () => {
+  if (useRoute().path === '/permissions/groups') {
+    return
+  }
+
   void navigateTo('/permissions/groups')
 }
 
@@ -64,7 +70,7 @@ const handleDelete = async (groupRole: GroupRole) => {
       }
     })
 
-    await loadGroupRoles()
+    await loadGroupRoles(true)
   } catch (error: unknown) {
     const apiError = error as ApiError
     const message = apiError.data?.error || apiError.data?.message || apiError.message || 'Failed to delete permission group'

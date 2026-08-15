@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useCachedApiFetch } from '~/composables/useCachedApiFetch'
+
 definePageMeta({
   middleware: ['auth', 'admin']
 })
@@ -22,9 +24,7 @@ type ApiError = {
 
 onMounted(async () => {
   try {
-    const response = await useApiFetch('/applications', {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch('/applications')
     console.log('Applications fetched successfully:', response)
     applications.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
@@ -45,9 +45,7 @@ const handleDelete = async (application: Application) => {
     })
     console.log('Application deleted successfully')
     // Refresh the applications list after deletion
-    const response = await useApiFetch('/applications', {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch('/applications', { forceRefresh: true })
     applications.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
     const apiError = error as ApiError
@@ -66,9 +64,7 @@ const handleApprove = async (application: Application) => {
     })
     console.log('Application approved successfully')
     // Refresh the applications list after approval
-    const response = await useApiFetch('/applications', {
-      method: 'GET'
-    })
+    const response = await useCachedApiFetch('/applications', { forceRefresh: true })
     applications.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
     const apiError = error as ApiError
