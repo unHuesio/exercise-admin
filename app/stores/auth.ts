@@ -27,6 +27,8 @@ type AdminSource = {
   role?: string
 }
 
+let initializePromise: Promise<void> | null = null
+
 const resolveIsAdmin = (value?: AdminSource) => {
   if (!value) {
     return false
@@ -50,7 +52,9 @@ const resolveIsAdmin = (value?: AdminSource) => {
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     isLoggedIn: false,
-    isAdmin: false
+    isAdmin: false,
+    lastToken: null as string | null,
+    sessionLoaded: false
   }),
   actions: {
     async initialize() {
@@ -60,31 +64,47 @@ export const useAuthStore = defineStore('auth', {
         if (!token) {
           this.isLoggedIn = false
           this.isAdmin = false
+          this.lastToken = null
+          this.sessionLoaded = true
           return
         }
 
-        this.isLoggedIn = !!token
-
-        try {
-          const payload = jwtDecode<DecodedToken>(token)
-          this.isAdmin = resolveIsAdmin(payload)
-        } catch {
-          this.isAdmin = false
+        if (this.sessionLoaded && this.lastToken === token) {
+          return
         }
 
-        try {
-          const me = await useApiFetch<MeResponse>('/me', {
-            method: 'GET'
-          })
+        if (initializePromise) {
+          return initializePromise
+        }
 
+        initializePromise = (async () => {
           this.isLoggedIn = true
-          this.isAdmin = resolveIsAdmin(me) || resolveIsAdmin(me?.user) || this.isAdmin
-        } catch {
-          if (typeof window !== 'undefined' && !sessionStorage.getItem('authToken')) {
-            this.isLoggedIn = false
+          this.lastToken = token
+          this.sessionLoaded = false
+
+          try {
+            const payload = jwtDecode<DecodedToken>(token)
+            this.isAdmin = resolveIsAdmin(payload)
+          } catch {
             this.isAdmin = false
           }
-        }
+
+          try {
+            const me = await useApiFetch<MeResponse>('/me', {
+              method: 'GET'
+            })
+
+            this.isAdmin = resolveIsAdmin(me) || resolveIsAdmin(me?.user) || this.isAdmin
+          } catch {
+            // Keep JWT-derived admin state if /me is unavailable or rate-limited.
+          } finally {
+            this.sessionLoaded = true
+          }
+        })().finally(() => {
+          initializePromise = null
+        })
+
+        return initializePromise
       }
     },
     logout() {
@@ -92,6 +112,8 @@ export const useAuthStore = defineStore('auth', {
         sessionStorage.removeItem('authToken')
         this.isLoggedIn = false
         this.isAdmin = false
+        this.lastToken = null
+        this.sessionLoaded = false
       }
     }
   }
