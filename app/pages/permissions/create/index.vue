@@ -10,7 +10,7 @@ const schema = v.pipe(
   v.object({
     object: v.pipe(
       v.string(),
-      v.values(['exercises', 'permissions'], 'Only exercises or permissions are allowed'),
+      v.values(['exercises', 'permissions', 'recommendations'], 'Only exercises, permissions, or recommendations are allowed'),
       v.minLength(1, 'Object is required')
     ),
     subject: v.pipe(
