@@ -54,14 +54,23 @@ const goToCreate = () => {
       title="Exercises"
       description="Browse and manage your exercises."
     />
-    <UButton
-      v-if="authStore.isAdmin"
-      color="primary"
-      class="my-4"
-      @click="goToCreate"
-    >
-      Create New Exercise
-    </UButton>
+    <div class="my-4 flex flex-wrap items-center gap-2">
+      <UButton
+        v-if="authStore.isAdmin"
+        color="primary"
+        @click="goToCreate"
+      >
+        Create New Exercise
+      </UButton>
+      <UButton
+        to="/exercise/recommendation"
+        color="primary"
+        variant="outline"
+        icon="i-lucide-sparkles"
+      >
+        Get Routine Recommendation
+      </UButton>
+    </div>
     <UPageSection>
       <div
         v-if="exercises.length === 0"
