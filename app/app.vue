@@ -45,6 +45,11 @@ const items = computed(() => {
       label: 'Exercises',
       to: '/exercise',
       active: route.path.startsWith('/exercise')
+    },
+    {
+      label: 'Routines',
+      to: '/routines',
+      active: route.path.startsWith('/routines')
     }
   ]
 

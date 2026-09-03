@@ -14,6 +14,28 @@ type ApiError = {
   message?: string
 }
 
+type RecommendationExercise = {
+  id?: number | string
+  name: string
+  sets: number | string
+  reps: number | string
+  restTime?: number | string
+  rest_time?: number | string
+  restingTime?: number | string
+}
+
+type RecommendationRoutine = {
+  name?: string
+  description?: string
+  exercises?: RecommendationExercise[]
+}
+
+type ExerciseSetRow = {
+  set: number
+  reps: number | string
+  restTime: number | string
+}
+
 const recommendationSchema = v.object({
   goal: v.pipe(v.string(), v.minLength(1, 'Goal is required')),
   focus: v.pipe(v.string(), v.minLength(1, 'Focus is required')),
@@ -23,7 +45,7 @@ const recommendationSchema = v.object({
 type RecommendationSchema = v.InferOutput<typeof recommendationSchema>
 
 const isSubmittingRecommendation = ref(false)
-const recommendation = ref<unknown | null>(null)
+const recommendation = ref<RecommendationRoutine | null>(null)
 const recommendationError = ref('')
 const recommendationState = reactive({
   goal: '',
@@ -31,29 +53,22 @@ const recommendationState = reactive({
   avoidMuscles: [] as string[]
 })
 
-function removeWeightProperties(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(removeWeightProperties)
-  }
-
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => key !== 'weight')
-        .map(([key, nestedValue]) => [key, removeWeightProperties(nestedValue)])
-    )
-  }
-
-  return value
+const getRestTime = (exercise: RecommendationExercise) => {
+  return exercise.restTime ?? exercise.rest_time ?? exercise.restingTime ?? 'Not specified'
 }
 
-const formattedRecommendation = computed(() => {
-  if (recommendation.value === null) {
-    return ''
-  }
+const getSetRows = (exercise: RecommendationExercise): ExerciseSetRow[] => {
+  const setCount = Number(exercise.sets) || 0
+  const restTime = getRestTime(exercise)
 
-  return JSON.stringify(removeWeightProperties(recommendation.value), null, 2)
-})
+  return Array.from({ length: setCount }, (_, index) => ({
+    set: index + 1,
+    reps: exercise.reps,
+    restTime
+  }))
+}
+
+const recommendedExercises = computed(() => recommendation.value?.exercises ?? [])
 
 const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationSchema>) => {
   event.preventDefault()
@@ -68,7 +83,7 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
   recommendationError.value = ''
 
   try {
-    recommendation.value = await useApiFetch('/recommendations/routine', {
+    recommendation.value = await useApiFetch<RecommendationRoutine>('/recommendations/routine', {
       method: 'POST',
       body: result.output
     })
@@ -156,10 +171,66 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
             </h2>
           </template>
 
-          <pre
-            v-if="formattedRecommendation"
-            class="overflow-x-auto whitespace-pre-wrap text-sm text-default"
-          >{{ formattedRecommendation }}</pre>
+          <div
+            v-if="recommendation"
+            class="space-y-6"
+          >
+            <div>
+              <h3
+                v-if="recommendation.name"
+                class="font-medium"
+              >
+                {{ recommendation.name }}
+              </h3>
+              <p
+                v-if="recommendation.description"
+                class="mt-1 text-sm text-muted"
+              >
+                {{ recommendation.description }}
+              </p>
+            </div>
+
+            <div
+              v-for="(exercise, index) in recommendedExercises"
+              :key="exercise.id ?? index"
+              class="rounded-lg bg-elevated p-4"
+            >
+              <h4 class="font-medium">
+                {{ exercise.name }}
+              </h4>
+              <table class="mt-2 w-full text-left text-sm">
+                <thead>
+                  <tr class="text-muted">
+                    <th class="pb-1 pr-4 font-medium">
+                      Set
+                    </th>
+                    <th class="pb-1 pr-4 font-medium">
+                      Reps
+                    </th>
+                    <th class="pb-1 font-medium">
+                      Rest Time
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in getSetRows(exercise)"
+                    :key="row.set"
+                  >
+                    <td class="py-1 pr-4">
+                      {{ row.set }}
+                    </td>
+                    <td class="py-1 pr-4">
+                      {{ row.reps }}
+                    </td>
+                    <td class="py-1">
+                      {{ row.restTime }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
           <p
             v-else
             class="text-sm text-muted"
