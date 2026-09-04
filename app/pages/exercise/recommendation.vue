@@ -14,11 +14,20 @@ type ApiError = {
   message?: string
 }
 
+type RecommendationSet = {
+  reps?: number | string
+  rest?: number | string
+  restTime?: number | string
+  rest_time?: number | string
+  weight?: number | string
+}
+
 type RecommendationExercise = {
   id?: number | string
-  name: string
-  sets: number | string
-  reps: number | string
+  name?: string
+  Exercise?: string
+  sets?: RecommendationSet[] | number | string
+  reps?: number | string
   restTime?: number | string
   rest_time?: number | string
   restingTime?: number | string
@@ -53,19 +62,45 @@ const recommendationState = reactive({
   avoidMuscles: [] as string[]
 })
 
+const formatRestTime = (val: number | string | undefined): string => {
+  if (val === undefined || val === null || val === '') return 'Not specified'
+  if (typeof val === 'number') return `${val}s`
+  return String(val)
+}
+
 const getRestTime = (exercise: RecommendationExercise) => {
-  return exercise.restTime ?? exercise.rest_time ?? exercise.restingTime ?? 'Not specified'
+  return exercise.restTime ?? exercise.rest_time ?? exercise.restingTime
 }
 
 const getSetRows = (exercise: RecommendationExercise): ExerciseSetRow[] => {
-  const setCount = Number(exercise.sets) || 0
-  const restTime = getRestTime(exercise)
+  if (Array.isArray(exercise.sets)) {
+    return exercise.sets.map((setObj, index) => {
+      const reps = setObj.reps ?? exercise.reps ?? 'Not specified'
+      const rawRest = setObj.rest ?? setObj.restTime ?? setObj.rest_time ?? getRestTime(exercise)
+      return {
+        set: index + 1,
+        reps,
+        restTime: formatRestTime(rawRest)
+      }
+    })
+  }
 
-  return Array.from({ length: setCount }, (_, index) => ({
-    set: index + 1,
-    reps: exercise.reps,
-    restTime
-  }))
+  const setCount = typeof exercise.sets === 'number' ? exercise.sets : Number(exercise.sets)
+  if (!isNaN(setCount) && setCount > 0) {
+    const reps = exercise.reps ?? 'Not specified'
+    const rawRest = getRestTime(exercise)
+    return Array.from({ length: setCount }, (_, index) => ({
+      set: index + 1,
+      reps,
+      restTime: formatRestTime(rawRest)
+    }))
+  }
+
+  return []
+}
+
+const getExerciseName = (exercise: RecommendationExercise) => {
+  return exercise.name || exercise.Exercise || 'Unnamed Exercise'
 }
 
 const recommendedExercises = computed(() => recommendation.value?.exercises ?? [])
@@ -196,7 +231,7 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
               class="rounded-lg bg-elevated p-4"
             >
               <h4 class="font-medium">
-                {{ exercise.name }}
+                {{ getExerciseName(exercise) }}
               </h4>
               <table class="mt-2 w-full text-left text-sm">
                 <thead>

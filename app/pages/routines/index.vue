@@ -7,8 +7,7 @@ definePageMeta({
 
 type RoutineSet = {
   reps?: number
-  weight?: number
-  rest?: number
+  rest?: number | string
 }
 
 type RoutineExercise = {
@@ -48,6 +47,12 @@ const getExerciseName = (exerciseId: string) => {
 
 const sortedExercises = (exercises: RoutineExercise[]) => {
   return [...exercises].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+}
+
+const formatRestTime = (val: number | string | undefined): string => {
+  if (val === undefined || val === null || val === '') return 'Not specified'
+  if (typeof val === 'number') return `${val}s`
+  return String(val)
 }
 
 onMounted(async () => {
@@ -134,9 +139,6 @@ onMounted(async () => {
                     <th class="pb-1 pr-4 font-medium">
                       Reps
                     </th>
-                    <th class="pb-1 pr-4 font-medium">
-                      Weight
-                    </th>
                     <th class="pb-1 font-medium">
                       Rest Time
                     </th>
@@ -153,11 +155,8 @@ onMounted(async () => {
                     <td class="py-1 pr-4">
                       {{ set.reps ?? 'Not specified' }}
                     </td>
-                    <td class="py-1 pr-4">
-                      {{ set.weight ?? 'Not specified' }}
-                    </td>
                     <td class="py-1">
-                      {{ set.rest ?? 'Not specified' }}
+                      {{ formatRestTime(set.rest) }}
                     </td>
                   </tr>
                 </tbody>

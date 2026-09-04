@@ -1,11 +1,10 @@
 import { useAuthStore } from '~/stores/auth'
 
-export default defineNuxtRouteMiddleware(() => {
+export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore()
-  return authStore.initialize().then(() => {
-    if (!authStore.isLoggedIn) {
-      console.warn('No auth token found - redirecting to login')
-      return navigateTo('/login')
-    }
-  })
+  await authStore.initialize()
+  if (!authStore.isLoggedIn) {
+    console.warn('No auth token found - redirecting to login')
+    return navigateTo('/login')
+  }
 })
