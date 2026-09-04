@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useCachedApiFetch, clearCachedApiFetch } from '~/composables/useCachedApiFetch'
+
 definePageMeta({
   middleware: ['auth', 'admin']
 })
@@ -35,6 +37,8 @@ onMounted(async () => {
 })
 
 const handleDelete = async (permission: Permission) => {
+  const id = useRoute().params.id
+
   try {
     await useApiFetch('/permissions', {
       method: 'DELETE',
@@ -45,7 +49,8 @@ const handleDelete = async (permission: Permission) => {
       }
     })
 
-    const response = await useCachedApiFetch('/permissions', { forceRefresh: true })
+    clearCachedApiFetch('/permissions')
+    const response = await useCachedApiFetch(`/permissions/role/${id}`, { forceRefresh: true })
 
     permissions.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {

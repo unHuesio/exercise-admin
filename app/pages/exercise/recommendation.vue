@@ -72,9 +72,11 @@ const getRestTime = (exercise: RecommendationExercise) => {
   return exercise.restTime ?? exercise.rest_time ?? exercise.restingTime
 }
 
+const MAX_RECOMMENDATION_SETS = 50
+
 const getSetRows = (exercise: RecommendationExercise): ExerciseSetRow[] => {
   if (Array.isArray(exercise.sets)) {
-    return exercise.sets.map((setObj, index) => {
+    return exercise.sets.slice(0, MAX_RECOMMENDATION_SETS).map((setObj, index) => {
       const reps = setObj.reps ?? exercise.reps ?? 'Not specified'
       const rawRest = setObj.rest ?? setObj.restTime ?? setObj.rest_time ?? getRestTime(exercise)
       return {
@@ -87,9 +89,10 @@ const getSetRows = (exercise: RecommendationExercise): ExerciseSetRow[] => {
 
   const setCount = typeof exercise.sets === 'number' ? exercise.sets : Number(exercise.sets)
   if (!isNaN(setCount) && setCount > 0) {
+    const safeSetCount = Math.min(Math.floor(setCount), MAX_RECOMMENDATION_SETS)
     const reps = exercise.reps ?? 'Not specified'
     const rawRest = getRestTime(exercise)
-    return Array.from({ length: setCount }, (_, index) => ({
+    return Array.from({ length: safeSetCount }, (_, index) => ({
       set: index + 1,
       reps,
       restTime: formatRestTime(rawRest)

@@ -4,7 +4,7 @@ export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore()
   await authStore.initialize()
 
-  if (!authStore.isAdmin) {
+  if (!authStore.isLoggedIn || !authStore.isAdmin) {
     console.warn('No admin role found - redirecting to login')
     return navigateTo('/login')
   }

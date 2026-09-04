@@ -1,12 +1,5 @@
 import { defineStore } from 'pinia'
-import { jwtDecode } from 'jwt-decode'
 import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
-
-type DecodedToken = {
-  roles?: string[]
-  isAdmin?: boolean
-  is_admin?: boolean
-}
 
 type MeResponse = {
   isAdmin?: boolean
@@ -79,25 +72,26 @@ export const useAuthStore = defineStore('auth', {
         }
 
         initializePromise = (async () => {
-          this.isLoggedIn = true
           this.lastToken = token
           this.sessionLoaded = false
-
-          try {
-            const payload = jwtDecode<DecodedToken>(token)
-            this.isAdmin = resolveIsAdmin(payload)
-          } catch {
-            this.isAdmin = false
-          }
+          // Fail closed for admin until /me confirms; token presence only implies a pending session.
+          this.isLoggedIn = true
+          this.isAdmin = false
 
           try {
             const me = await useApiFetch<MeResponse>('/me', {
               method: 'GET'
             })
 
-            this.isAdmin = resolveIsAdmin(me) || resolveIsAdmin(me?.user) || this.isAdmin
+            this.isLoggedIn = true
+            this.isAdmin = resolveIsAdmin(me) || resolveIsAdmin(me?.user)
           } catch {
-            // Keep JWT-derived admin state if /me is unavailable or rate-limited.
+            // Never trust client-decoded JWT claims. Admin requires a successful /me.
+            this.isAdmin = false
+            if (!sessionStorage.getItem('authToken')) {
+              this.isLoggedIn = false
+              this.lastToken = null
+            }
           } finally {
             this.sessionLoaded = true
           }

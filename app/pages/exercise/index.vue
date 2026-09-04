@@ -30,7 +30,6 @@ type ApiError = {
 onMounted(async () => {
   try {
     const response = await useCachedApiFetch('/exercises')
-    console.log('Exercises fetched successfully:', response)
     exercises.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
     const apiError = error as ApiError

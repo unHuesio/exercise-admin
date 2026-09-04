@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as v from 'valibot'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 definePageMeta({
   middleware: ['auth', 'admin']
@@ -52,6 +53,7 @@ const handleSubmit = async (event: FormSubmitEvent<Schema>) => {
         method: 'POST',
         body: result.output
       })
+      clearCachedApiFetch('/permissions')
       navigateTo('/permissions')
     } catch (error: unknown) {
       const apiError = error as ApiError

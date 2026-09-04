@@ -6,8 +6,16 @@ type CachedFetchEntry<T> = {
 
 const fetchCache = new Map<string, CachedFetchEntry<unknown>>()
 
-function buildCacheKey(path: string, token: string | null) {
-  return `${token || 'anon'}:${path}`
+function buildCacheKey(path: string) {
+  // Path-only keys: this cache is client-side and cleared on login/logout.
+  // Avoid embedding the full JWT in Map keys.
+  return path
+}
+
+function isPathMatch(cacheKey: string, path: string) {
+  return cacheKey === path
+    || cacheKey.startsWith(`${path}/`)
+    || cacheKey.startsWith(`${path}?`)
 }
 
 export async function useCachedApiFetch<T = unknown>(
@@ -18,19 +26,22 @@ export async function useCachedApiFetch<T = unknown>(
   }
 ) {
   const ttlMs = options?.ttlMs ?? 10_000
-  const config = useRuntimeConfig()
-  const url = `${config.public.apiBaseUrl}${path}`
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null
-  const cacheKey = buildCacheKey(url, token)
+  const cacheKey = buildCacheKey(path)
   const now = Date.now()
   const existingEntry = fetchCache.get(cacheKey) as CachedFetchEntry<T> | undefined
 
-  if (!options?.forceRefresh && existingEntry?.value && now - existingEntry.timestamp < ttlMs) {
-    return existingEntry.value
+  if (existingEntry && !existingEntry.promise && now - existingEntry.timestamp >= ttlMs) {
+    fetchCache.delete(cacheKey)
   }
 
-  if (existingEntry?.promise && !options?.forceRefresh) {
-    return existingEntry.promise
+  const freshEntry = fetchCache.get(cacheKey) as CachedFetchEntry<T> | undefined
+
+  if (!options?.forceRefresh && freshEntry?.value && now - freshEntry.timestamp < ttlMs) {
+    return freshEntry.value
+  }
+
+  if (freshEntry?.promise && !options?.forceRefresh) {
+    return freshEntry.promise
   }
 
   const requestPromise = useApiFetch<T>(path, {
@@ -50,8 +61,8 @@ export async function useCachedApiFetch<T = unknown>(
 
   fetchCache.set(cacheKey, {
     promise: requestPromise,
-    value: existingEntry?.value ?? null,
-    timestamp: existingEntry?.timestamp ?? 0
+    value: freshEntry?.value ?? null,
+    timestamp: freshEntry?.timestamp ?? 0
   })
 
   return requestPromise
@@ -63,8 +74,8 @@ export function clearCachedApiFetch(path?: string) {
     return
   }
 
-  for (const key of fetchCache.keys()) {
-    if (key.endsWith(`:${path}`)) {
+  for (const key of [...fetchCache.keys()]) {
+    if (isPathMatch(key, path)) {
       fetchCache.delete(key)
     }
   }

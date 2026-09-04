@@ -15,7 +15,14 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
-    '/': { prerender: true }
+    '/': { prerender: true },
+    // sessionStorage auth is browser-only; skip SSR so middleware can see the token
+    '/exercise/**': { ssr: false },
+    '/routines/**': { ssr: false },
+    '/permissions/**': { ssr: false },
+    '/applications/**': { ssr: false },
+    '/login': { ssr: false },
+    '/register': { ssr: false }
   },
 
   compatibilityDate: '2025-01-15',

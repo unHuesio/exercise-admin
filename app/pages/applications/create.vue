@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as v from 'valibot'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 definePageMeta({
   middleware: ['auth', 'admin']
@@ -31,15 +32,13 @@ type ApiError = {
 const handleSubmit = async (event: FormSubmitEvent<Schema>) => {
   event.preventDefault()
   const result = v.safeParse(schema, state)
-  console.log('Form data:', state)
   if (result.success) {
-    console.log('Form data is valid:', result.output)
     try {
       await useApiFetch(`/applications`, {
         method: 'POST',
         body: result.output
       })
-      console.log('Application created successfully')
+      clearCachedApiFetch('/applications')
       navigateTo('/applications')
     } catch (error: unknown) {
       const apiError = error as ApiError

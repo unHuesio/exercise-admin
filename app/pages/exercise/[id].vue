@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as v from 'valibot'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 definePageMeta({
   middleware: ['auth', 'admin']
@@ -74,6 +75,7 @@ const handleDelete = async () => {
     await useApiFetch(`/exercises/${id}`, {
       method: 'DELETE'
     })
+    clearCachedApiFetch('/exercises')
     navigateTo('/exercise')
   } catch (error: unknown) {
     const apiError = error as ApiError
@@ -94,6 +96,7 @@ const handleSubmit = async (event: FormSubmitEvent<Schema>) => {
         method: 'PUT',
         body: result.output
       })
+      clearCachedApiFetch('/exercises')
       navigateTo('/exercise')
     } catch (error: unknown) {
       const apiError = error as ApiError

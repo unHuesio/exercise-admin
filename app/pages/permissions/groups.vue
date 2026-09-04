@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useCachedApiFetch, clearCachedApiFetch } from '~/composables/useCachedApiFetch'
+
 definePageMeta({
   middleware: ['auth', 'admin']
 })
@@ -70,6 +72,7 @@ const handleDelete = async (groupRole: GroupRole) => {
       }
     })
 
+    clearCachedApiFetch('/permissions/groups')
     await loadGroupRoles(true)
   } catch (error: unknown) {
     const apiError = error as ApiError

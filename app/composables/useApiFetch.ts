@@ -14,7 +14,7 @@ export function useApiFetch<T = unknown>(path: string, options?: { method?: stri
     body: options?.body,
     headers: defaultHeaders,
     async onResponseError({ response }) {
-      console.error('API request error:', response)
+      console.error('API request error:', response.status)
       if (response.status === 401
         || response.status === 403
         || response._data?.error === 'Token expired'

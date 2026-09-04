@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCachedApiFetch } from '~/composables/useCachedApiFetch'
+import { useCachedApiFetch, clearCachedApiFetch } from '~/composables/useCachedApiFetch'
 
 definePageMeta({
   middleware: ['auth', 'admin']
@@ -23,7 +23,6 @@ type ApiError = {
 onMounted(async () => {
   try {
     const response = await useCachedApiFetch('/permissions')
-    console.log('Permissions fetched successfully:', response)
     permissions.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
     const apiError = error as ApiError
@@ -58,8 +57,7 @@ const handleDelete = async (permission: Permission) => {
         object: permission[1]
       }
     })
-    console.log('Permission deleted successfully')
-    // Refresh the permissions list after deletion
+    clearCachedApiFetch('/permissions')
     const response = await useCachedApiFetch('/permissions', { forceRefresh: true })
     permissions.value = Array.isArray(response) ? response : []
   } catch (error: unknown) {
