@@ -9,6 +9,11 @@ definePageMeta({
 const authStore = useAuthStore()
 
 const exercises = ref<Excercise[]>([])
+const page = ref(1)
+const isLoadingMore = ref(false)
+const hasMore = ref(true)
+const sentinel = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
 
 type Excercise = {
   id: number
@@ -27,15 +32,48 @@ type ApiError = {
   message?: string
 }
 
-onMounted(async () => {
+const loadMoreExercises = async () => {
+  if (isLoadingMore.value || !hasMore.value) return
+
+  isLoadingMore.value = true
+
   try {
-    const response = await useCachedApiFetch('/exercises')
-    exercises.value = Array.isArray(response) ? response : []
+    const response = await useCachedApiFetch(`/exercises?page=${page.value}`)
+    const newExercises = Array.isArray(response) ? response : []
+
+    exercises.value = [...exercises.value, ...newExercises]
+
+    if (newExercises.length === 0) {
+      hasMore.value = false
+    } else {
+      page.value += 1
+    }
   } catch (error: unknown) {
     const apiError = error as ApiError
     const message = apiError.data?.error || apiError.data?.message || apiError.message || 'Failed to fetch exercises'
     console.error('Failed to fetch exercises:', message)
+    hasMore.value = false
+  } finally {
+    isLoadingMore.value = false
   }
+}
+
+onMounted(() => {
+  void loadMoreExercises()
+
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting) {
+      void loadMoreExercises()
+    }
+  })
+
+  if (sentinel.value) {
+    observer.observe(sentinel.value)
+  }
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
 })
 
 const goToDetails = (id: number) => {
@@ -97,6 +135,16 @@ const goToCreate = () => {
           <p><strong>Focus:</strong> {{ exercise.Focus }}</p>
         </div>
       </div>
+      <div
+        ref="sentinel"
+        class="h-1"
+      />
+      <p
+        v-if="isLoadingMore"
+        class="my-4 text-center text-gray-500"
+      >
+        Loading more exercises...
+      </p>
     </UPageSection>
   </UContainer>
 </template>
