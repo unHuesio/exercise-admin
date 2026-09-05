@@ -5,12 +5,7 @@ type CachedFetchEntry<T> = {
 }
 
 const fetchCache = new Map<string, CachedFetchEntry<unknown>>()
-
-function buildCacheKey(path: string) {
-  // Path-only keys: this cache is client-side and cleared on login/logout.
-  // Avoid embedding the full JWT in Map keys.
-  return path
-}
+let cacheGeneration = 0
 
 function isPathMatch(cacheKey: string, path: string) {
   return cacheKey === path
@@ -26,7 +21,7 @@ export async function useCachedApiFetch<T = unknown>(
   }
 ) {
   const ttlMs = options?.ttlMs ?? 10_000
-  const cacheKey = buildCacheKey(path)
+  const cacheKey = path
   const now = Date.now()
   const existingEntry = fetchCache.get(cacheKey) as CachedFetchEntry<T> | undefined
 
@@ -36,7 +31,7 @@ export async function useCachedApiFetch<T = unknown>(
 
   const freshEntry = fetchCache.get(cacheKey) as CachedFetchEntry<T> | undefined
 
-  if (!options?.forceRefresh && freshEntry?.value && now - freshEntry.timestamp < ttlMs) {
+  if (!options?.forceRefresh && freshEntry && freshEntry.value !== null && now - freshEntry.timestamp < ttlMs) {
     return freshEntry.value
   }
 
@@ -44,14 +39,18 @@ export async function useCachedApiFetch<T = unknown>(
     return freshEntry.promise
   }
 
+  const requestGeneration = cacheGeneration
   const requestPromise = useApiFetch<T>(path, {
     method: 'GET'
   }).then((response) => {
-    fetchCache.set(cacheKey, {
-      promise: null,
-      value: response,
-      timestamp: Date.now()
-    })
+    const currentEntry = fetchCache.get(cacheKey)
+    if (requestGeneration === cacheGeneration && currentEntry?.promise === requestPromise) {
+      fetchCache.set(cacheKey, {
+        promise: null,
+        value: response,
+        timestamp: Date.now()
+      })
+    }
 
     return response
   }).catch((error) => {
@@ -69,6 +68,8 @@ export async function useCachedApiFetch<T = unknown>(
 }
 
 export function clearCachedApiFetch(path?: string) {
+  cacheGeneration += 1
+
   if (!path) {
     fetchCache.clear()
     return
