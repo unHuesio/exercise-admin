@@ -34,9 +34,14 @@ type RecommendationExercise = {
 }
 
 type RecommendationRoutine = {
+  id?: string
   name?: string
   description?: string
   exercises?: RecommendationExercise[]
+}
+
+type Exercise = {
+  Focus: string
 }
 
 type ExerciseSetRow = {
@@ -46,7 +51,10 @@ type ExerciseSetRow = {
 }
 
 const recommendationSchema = v.object({
-  goal: v.pipe(v.string(), v.minLength(1, 'Goal is required')),
+  goal: v.pipe(
+    v.string(),
+    v.check(goal => goal === 'strength' || goal === 'powerlifting', 'Select a training goal')
+  ),
   focus: v.pipe(v.string(), v.minLength(1, 'Focus is required')),
   avoidMuscles: v.array(v.string())
 })
@@ -56,6 +64,9 @@ type RecommendationSchema = v.InferOutput<typeof recommendationSchema>
 const isSubmittingRecommendation = ref(false)
 const recommendation = ref<RecommendationRoutine | null>(null)
 const recommendationError = ref('')
+const focusOptions = ref<string[]>([])
+const focusOptionsError = ref('')
+const isLoadingFocusOptions = ref(true)
 const recommendationState = reactive({
   goal: '',
   focus: '',
@@ -108,6 +119,37 @@ const getExerciseName = (exercise: RecommendationExercise) => {
 
 const recommendedExercises = computed(() => recommendation.value?.exercises ?? [])
 
+const loadFocusOptions = async () => {
+  const exercises: Exercise[] = []
+  let page = 1
+
+  try {
+    while (true) {
+      const response = await useCachedApiFetch<Exercise[]>(`/exercises?page=${page}&limit=100`)
+      const exercisePage = Array.isArray(response) ? response : []
+      exercises.push(...exercisePage)
+
+      if (exercisePage.length < 100) break
+      page += 1
+    }
+
+    focusOptions.value = [...new Set(
+      exercises
+        .map(exercise => exercise.Focus.trim())
+        .filter(Boolean)
+    )].sort()
+  } catch (error: unknown) {
+    const apiError = error as ApiError
+    focusOptionsError.value = apiError.data?.error
+      || apiError.data?.message
+      || apiError.message
+      || 'Failed to load focus options'
+    console.error('Failed to load focus options:', focusOptionsError.value)
+  } finally {
+    isLoadingFocusOptions.value = false
+  }
+}
+
 const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationSchema>) => {
   event.preventDefault()
   const result = v.safeParse(recommendationSchema, recommendationState)
@@ -133,6 +175,10 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
     isSubmittingRecommendation.value = false
   }
 }
+
+onMounted(() => {
+  void loadFocusOptions()
+})
 </script>
 
 <template>
@@ -160,19 +206,69 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
               label="Goal"
               name="goal"
             >
-              <UInput
-                v-model="recommendationState.goal"
-                placeholder="e.g. powerlifting"
-              />
+              <div
+                class="flex gap-2"
+                role="radiogroup"
+                aria-label="Training goal"
+              >
+                <UButton
+                  type="button"
+                  :color="recommendationState.goal === 'strength' ? 'primary' : 'neutral'"
+                  :variant="recommendationState.goal === 'strength' ? 'solid' : 'outline'"
+                  :aria-checked="recommendationState.goal === 'strength'"
+                  role="radio"
+                  @click="recommendationState.goal = 'strength'"
+                >
+                  Strength
+                </UButton>
+                <UButton
+                  type="button"
+                  :color="recommendationState.goal === 'powerlifting' ? 'primary' : 'neutral'"
+                  :variant="recommendationState.goal === 'powerlifting' ? 'solid' : 'outline'"
+                  :aria-checked="recommendationState.goal === 'powerlifting'"
+                  role="radio"
+                  @click="recommendationState.goal = 'powerlifting'"
+                >
+                  Powerlifting
+                </UButton>
+              </div>
             </UFormField>
             <UFormField
               label="Focus"
               name="focus"
             >
-              <UInput
-                v-model="recommendationState.focus"
-                placeholder="e.g. Bicep"
-              />
+              <div
+                v-if="focusOptions.length > 0"
+                class="flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-label="Muscle focus"
+              >
+                <UButton
+                  v-for="focus in focusOptions"
+                  :key="focus"
+                  type="button"
+                  :color="recommendationState.focus === focus ? 'primary' : 'neutral'"
+                  :variant="recommendationState.focus === focus ? 'solid' : 'outline'"
+                  :aria-checked="recommendationState.focus === focus"
+                  role="radio"
+                  @click="recommendationState.focus = focus"
+                >
+                  {{ focus }}
+                </UButton>
+              </div>
+              <p
+                v-else-if="isLoadingFocusOptions"
+                class="text-sm text-muted"
+              >
+                Loading focus options...
+              </p>
+              <p
+                v-else
+                class="text-sm text-error"
+                role="alert"
+              >
+                {{ focusOptionsError }}
+              </p>
             </UFormField>
             <UFormField
               label="Muscles to Avoid"
@@ -204,9 +300,19 @@ const handleRecommendationSubmit = async (event: FormSubmitEvent<RecommendationS
 
         <UCard>
           <template #header>
-            <h2 class="text-lg font-semibold">
-              Recommended Routine
-            </h2>
+            <div class="flex items-center justify-between gap-4">
+              <h2 class="text-lg font-semibold">
+                Recommended Routine
+              </h2>
+              <UButton
+                v-if="recommendation?.id"
+                :to="`/routines/${encodeURIComponent(recommendation.id)}`"
+                size="sm"
+                variant="outline"
+              >
+                Edit
+              </UButton>
+            </div>
           </template>
 
           <div
